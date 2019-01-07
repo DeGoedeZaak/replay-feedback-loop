@@ -1,5 +1,6 @@
 require "sinatra"
 require "net/http"
+require "json"
 
 #set :bind, "0.0.0.0"
 
@@ -13,7 +14,9 @@ post "/complaint" do
   if address_to_unsubscribe
     complaint_hash = complaint_hash_for(address_to_unsubscribe)
     response = post_to_identity(complaint_hash.to_json)
-    "#{response.code} - Posted complaint for #{address_to_unsubscribe}"
+    message = "#{response.code} - Posted complaint for #{address_to_unsubscribe}"
+    logger.info message
+    message
   end
 end
 
@@ -21,8 +24,12 @@ post "/json" do
   json_blob = params["message"].match(/({.*})/m)
 
   if json_blob
-    response = post_to_identity(json_blob[0])
-    "#{response.code} Forwarded json to /feedback-loop"
+    cleaned_json = json_blob[0].gsub(/\s+/, "")
+    parsed_json = JSON.parse cleaned_json
+    response = post_to_identity(parsed_json.to_json)
+    message = "#{response.code} Forwarded json to /feedback-loop"
+    logger.info message
+    message
   end
 end
 
