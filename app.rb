@@ -25,27 +25,70 @@ post "/json" do
 
   if json_blob
     cleaned_json = json_blob[0].gsub(/\s+/, "")
-    parsed_json = JSON.parse cleaned_json
-    response = post_to_identity(parsed_json.to_json)
+
+    begin
+      parsed_json = JSON.parse cleaned_json
+      response = post_to_identity(parsed_json.to_json)
+    rescue
+      notification_type = extract_from_string(cleaned_json, "notificationType")
+      email = extract_from_string(cleaned_json, "emailAddress")
+      bounce_type = extract_from_string(cleaned_json, "bounceType")
+      bounce_subtype = extract_from_string(cleaned_json, "bounceSubType")
+
+      payload = case notification_type
+      when "Bounce"
+        bounce_hash_for(email, bounce_type, bounce_subtype)
+      when "Complaint"
+        complaint_hash_for(email)
+      else {}
+      end
+
+      logger.info "found #{notification_type}: email: #{email} | bounceType: #{bounce_type} | bounceSubType: #{bounce_subtype}"
+      response = post_to_identity(payload.to_json)
+    end
+
     message = "#{response.code} Forwarded json to /feedback-loop"
     logger.info message
     message
   end
 end
 
+def extract_from_string(string, key)
+  string.match(/\"#{key}\":\"(.*?)\"/)[1]
+end
+
+def bounce_hash_for(email, bounce_type = "Permanent", bounce_subtype = "General")
+  {
+    notificationType: "Bounce",
+    bounce: {
+      bounceType: bounce_type,
+      bounceSubType: bounce_subtype,
+      bouncedRecipients: [
+        {
+          emailAddress: email
+        }
+      ],
+      timestamp: Time.now.strftime("%FT%T.%LZ")
+    },
+    mail: {
+        messageId: "1234foo"
+    }
+  }
+end
+
 def complaint_hash_for(email)
   {
     notificationType: "Complaint",
     complaint: {
-        complainedRecipients: [
-            {
-                emailAddress: email
-            }
-        ],
-        timestamp: Time.now.strftime("%FT%T.%LZ")
+      complainedRecipients: [
+        {
+          emailAddress: email
+        }
+      ],
+      timestamp: Time.now.strftime("%FT%T.%LZ")
     },
     mail: {
-        messageId: "1234foo"
+      messageId: "1234foo"
     }
   }
 end
