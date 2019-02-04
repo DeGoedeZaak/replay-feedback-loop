@@ -94,17 +94,15 @@ def complaint_hash_for(email)
 end
 
 def post_to_identity(json_payload)
-  uri = URI("https://identity.degoedezaak.org/mailings/api/mailings/feedback-loop")
-  # uri = URI("https://postb.in/jgPQ5CC1")
+  uri = URI("#{IDENTITY_URL}/mailings/api/mailings/feedback-loop")
 
-  https = Net::HTTP.new(uri.host, uri.port)
-  https.use_ssl = true
-
+  http = Net::HTTP.new(uri.host, uri.port)
+  http.use_ssl = true if uri.scheme == "https"
   headers = {
     "Content-Type" => "application/json",
   }
   request = Net::HTTP::Post.new(uri.path, headers)
   request.body = json_payload
 
-  https.request(request)
+  http.request(request)
 end
