@@ -9,7 +9,7 @@ get "/" do
 end
 
 post "/complaint" do
-  address_to_unsubscribe = params["message"].scan(/To:.*?([0-9a-z]+@[0-9a-z]+\.[a-z]+)/).flatten.last
+  address_to_unsubscribe = params["message"].to_s.scan(/To:.*?([0-9a-z]+@[0-9a-z]+\.[a-z]+)/).flatten.last
 
   if address_to_unsubscribe
     complaint_hash = complaint_hash_for(address_to_unsubscribe)
